@@ -3,9 +3,46 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { AionosLogo } from "@/components/AionosLogo";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { CheckCircle, Share, Download } from "lucide-react";
+import { CheckCircle, Share, Download, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { generateAndShareReport } from "@/utils/mobileCapabilities";
 
 const FinalReport = () => {
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportGenerated, setReportGenerated] = useState(false);
+
+  const handleShareReport = async () => {
+    setIsGeneratingReport(true);
+    try {
+      const patientData = {
+        name: 'Dr. Maya Sharma',
+        scanId: 'SCAN-' + Date.now(),
+        findings: 'Small hepatic cyst detected',
+        size: '1.2 cm',
+        recommendation: 'Follow-up in 3 months',
+        notes: 'Patient showed no complications during scan. Results within normal parameters.'
+      };
+      
+      const result = await generateAndShareReport(patientData);
+      if (result.success) {
+        setReportGenerated(true);
+        
+        // Add haptic feedback
+        if (navigator.vibrate) {
+          navigator.vibrate([100, 50, 100]);
+        }
+      }
+    } catch (error) {
+      console.error('Error sharing report:', error);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    // For demo purposes, we'll use the same function
+    await handleShareReport();
+  };
   const scanThumbnails = [
     { name: "3D/4D SCAN", image: "/placeholder.svg" },
     { name: "B-MODE", image: "/placeholder.svg" },
@@ -102,18 +139,45 @@ const FinalReport = () => {
 
         {/* Action Buttons */}
         <div className="flex gap-3">
-          <Button className="flex-1 bg-gradient-primary hover:shadow-glow transition-smooth font-semibold py-4 rounded-full">
-            <Share className="w-4 h-4 mr-2" />
-            Share Report
+          <Button 
+            onClick={handleShareReport}
+            disabled={isGeneratingReport}
+            className="flex-1 bg-gradient-primary hover:shadow-glow transition-smooth font-semibold py-4 rounded-full"
+          >
+            {isGeneratingReport ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Share className="w-4 h-4 mr-2" />
+                {reportGenerated ? 'Share Again' : 'Share Report'}
+              </>
+            )}
           </Button>
           <Button 
+            onClick={handleDownloadReport}
+            disabled={isGeneratingReport}
             variant="outline" 
             className="flex-1 py-4 rounded-full border-2 font-semibold"
           >
             <Download className="w-4 h-4 mr-2" />
-            Print / Save as PDF
+            Save as PDF
           </Button>
         </div>
+        
+        {reportGenerated && (
+          <Card className="mt-4 p-4 bg-success/10 border border-success/20">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-success" />
+              <span className="text-success font-medium">Report generated successfully!</span>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              The report has been saved to your device and is ready to share.
+            </p>
+          </Card>
+        )}
       </div>
       
       <BottomNavigation />

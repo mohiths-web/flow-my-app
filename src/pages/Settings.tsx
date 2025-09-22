@@ -11,24 +11,84 @@ import {
   Cloud, 
   HelpCircle, 
   LogOut,
-  ChevronRight 
+  ChevronRight,
+  Loader2
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { getSettings, saveSettings } from "@/utils/mobileCapabilities";
 
 const Settings = () => {
+  const [settings, setSettings] = useState<any>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const savedSettings = await getSettings();
+      setSettings(savedSettings);
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleSetting = async (key: string, value: boolean) => {
+    setIsSaving(true);
+    const updatedSettings = { ...settings, [key]: value };
+    setSettings(updatedSettings);
+    
+    try {
+      await saveSettings(updatedSettings);
+      
+      // Add haptic feedback
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      // Revert on error
+      setSettings(settings);
+    } finally {
+      setIsSaving(false);
+    }
+  };
   const settingsGroups = [
     {
       title: "Account",
       items: [
         { icon: User, label: "Profile Settings", hasToggle: false },
-        { icon: Bell, label: "Notifications", hasToggle: true, enabled: true },
+        { 
+          icon: Bell, 
+          label: "Notifications", 
+          hasToggle: true, 
+          key: "notifications",
+          enabled: settings.notifications 
+        },
         { icon: Shield, label: "Privacy & Security", hasToggle: false }
       ]
     },
     {
       title: "Data & Storage", 
       items: [
-        { icon: Cloud, label: "Cloud Sync", hasToggle: true, enabled: true },
-        { icon: Cloud, label: "Auto Backup", hasToggle: true, enabled: false }
+        { 
+          icon: Cloud, 
+          label: "Cloud Sync", 
+          hasToggle: true, 
+          key: "cloudSync",
+          enabled: settings.cloudSync 
+        },
+        { 
+          icon: Cloud, 
+          label: "Auto Backup", 
+          hasToggle: true, 
+          key: "autoBackup",
+          enabled: settings.autoBackup 
+        }
       ]
     },
     {
@@ -101,7 +161,16 @@ const Settings = () => {
                       </div>
                       
                       {item.hasToggle ? (
-                        <Switch checked={item.enabled} />
+                        <div className="flex items-center gap-2">
+                          {isSaving && (
+                            <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                          )}
+                          <Switch 
+                            checked={item.enabled || false}
+                            onCheckedChange={(checked) => handleToggleSetting(item.key!, checked)}
+                            disabled={isSaving}
+                          />
+                        </div>
                       ) : (
                         <ChevronRight className={`w-4 h-4 ${
                           item.dangerous ? 'text-destructive' : 'text-muted-foreground'
